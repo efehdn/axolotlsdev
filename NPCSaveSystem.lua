@@ -44,7 +44,7 @@ function NPCSaveSystem.SetupNPC(npc, npcType)
 		prompt.ActionText = "Kurtar"
 		prompt.ObjectText = "NPC"
 		prompt.MaxActivationDistance = 8
-		prompt.HoldDuration = 0.2
+		prompt.HoldDuration = 0.1 -- Daha hızlı tepki için düşürdüm
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = humanoidRootPart
 
@@ -62,73 +62,58 @@ function NPCSaveSystem.SetupNPC(npc, npcType)
 	end
 
 	highlight.Parent = npc
-
-	-- NPC'ye tag ekle
 	npc:SetAttribute("NPCType", npcType)
 end
 
 -- NPC'yi kurtar (ragdoll ile it + player animasyonu)
 function NPCSaveSystem.SaveNPC(npc, player)
-	if savedNPCs[npc] then
-		return -- Zaten kurtarılmış
-	end
+	if savedNPCs[npc] then return end
 
 	-- Kurtarıldı olarak işaretle
 	savedNPCs[npc] = true
 
-	-- ProximityPrompt'u kaldır
+	-- Prompt'u kapat
 	local prompt = npc.HumanoidRootPart:FindFirstChild("SavePrompt")
-	if prompt then
-		prompt.Enabled = false
-	end
+	if prompt then prompt.Enabled = false end
 
-	-- Highlight'ı değiştir (mavi = kurtarılmış)
+	-- Highlight'ı değiştir (mavi)
 	local highlight = npc:FindFirstChild("NPCHighlight")
 	if highlight then
 		highlight.FillColor = Color3.fromRGB(0, 150, 255)
 		highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
 	end
 
-	-- Player'ın karakterinin konumunu al
-	local playerChar = player.Character
-	if not playerChar then return end
-
-	-- PLAYER İTME ANİMASYONU OYNAT
-	local humanoid = playerChar:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		-- Client'a animasyon oynama sinyali gönder
-		local playPushAnimEvent = ReplicatedStorage:FindFirstChild("PlayPushAnimation")
-		if playPushAnimEvent then
-			playPushAnimEvent:FireClient(player)
-		end
+	-- Player animasyonu için sinyal gönder
+	local playPushAnimEvent = ReplicatedStorage:FindFirstChild("PlayPushAnimation")
+	if playPushAnimEvent then
+		playPushAnimEvent:FireClient(player)
 	end
 
-	-- NPC'yi player'dan uzağa doğru it (YUKARI + İLERİ)
-	local playerPos = playerChar.HumanoidRootPart.Position
-	local npcPos = npc.HumanoidRootPart.Position
+	-- [[ FİZİK DÜZELTMESİ ]] --
+	local npcRoot = npc:FindFirstChild("HumanoidRootPart")
+	if npcRoot then
+		-- NPC'nin fizik kontrolünü oyuncuya ver (Anlık tepki için şart!)
+		npcRoot:SetNetworkOwner(player)
 
-	-- Yatay yön (X ve Z düzleminde)
-	local horizontalDirection = Vector3.new(
-		npcPos.X - playerPos.X,
-		0,  -- Y'yi sıfırla
-		npcPos.Z - playerPos.Z
-	).Unit
+		-- NPC'yi hafifçe yerden kes (sürtünmeyi engellemek için)
+		npcRoot.CFrame = npcRoot.CFrame + Vector3.new(0, 1, 0)
+	end
 
-	-- YUKARI + İLERİ yön (45 derece yukarı açı)
-	local pushDirection = (horizontalDirection + Vector3.new(0, 1, 0)).Unit
+	-- İtme Yönünü Hesapla
+	local playerChar = player.Character
+	if playerChar and playerChar:FindFirstChild("HumanoidRootPart") then
+		local playerPos = playerChar.HumanoidRootPart.Position
+		local npcPos = npc.HumanoidRootPart.Position
 
-	-- Ragdoll ile fırlat
-	-- Kuvvet artırıldı: 30 → 50 (daha güçlü itme)
-	RagdollModule.PushNPC(npc, pushDirection, 50)
+		local direction = (npcPos - playerPos).Unit 
+		-- Yukarı doğru ekstra kuvvet ekle ki güzel uçsun
+		local pushDirection = (direction + Vector3.new(0, 0.5, 0)).Unit
 
-	-- 3 saniye sonra ragdoll'u kapat
-	task.delay(3, function()
-		if npc and npc.Parent then
-			RagdollModule.DisableRagdoll(npc)
-		end
-	end)
+		-- İtme gücü
+		RagdollModule.PushNPC(npc, pushDirection, 80) -- Gücü 80'e çıkardım
+	end
 
-	-- Event fire et (level sistem için)
+	-- Event fire et (Timer UI güncellemesi için)
 	local npcSavedEvent = ReplicatedStorage:FindFirstChild("NPCSaved")
 	if npcSavedEvent then
 		npcSavedEvent:FireAllClients(npc)
@@ -141,16 +126,13 @@ function NPCSaveSystem.ClearAll()
 	threatNPCs = {}
 end
 
--- Kurtarılan NPC sayısını al
+-- Diğer fonksiyonlar aynen kalabilir...
 function NPCSaveSystem.GetSavedCount()
 	local count = 0
-	for _ in pairs(savedNPCs) do
-		count = count + 1
-	end
+	for _ in pairs(savedNPCs) do count = count + 1 end
 	return count
 end
 
--- Toplam hedef NPC sayısını al
 function NPCSaveSystem.GetTotalTargets()
 	local count = 0
 	for _, npc in ipairs(workspace:GetDescendants()) do
@@ -161,9 +143,8 @@ function NPCSaveSystem.GetTotalTargets()
 	return count
 end
 
--- Level tamamlandı mı kontrol et
 function NPCSaveSystem.IsLevelComplete()
 	return NPCSaveSystem.GetSavedCount() >= NPCSaveSystem.GetTotalTargets()
 end
 
-return NPCSaveSystem
+return NPCSaveSystem	
