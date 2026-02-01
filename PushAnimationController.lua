@@ -23,7 +23,7 @@ local player = Players.LocalPlayer
 
 -- ANİMASYON AYARLARI
 local PUSH_ANIMATION_ID = "rbxassetid://71345108336102" -- BURAYA ANİMASYON ID'Sİ EKLE (0 = yok)
-local ANIMATION_SPEED = 1.5 -- Animasyon hızı (1.0 = normal, 1.5 = %50 daha hızlı)
+local ANIMATION_SPEED = 1 -- Animasyon hızı (1.0 = normal, 1.5 = %50 daha hızlı)
 
 -- Animasyon instance'ı
 local pushAnimation = nil
