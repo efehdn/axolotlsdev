@@ -8,7 +8,7 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 -- Kamera ayarları
-local CAMERA_OFFSET = Vector3.new(0, 0.3, 0) -- Yükseltildi: Gövdeyle çakışmayı önler
+local CAMERA_OFFSET = Vector3.new(0, 0.5, 0) -- Yükseltildi: Gövdeyle çakışmayı önler
 local HEAD_TRANSPARENCY = 1 -- Kafa tamamen görünmez
 
 local function updateBodyVisibility(character)
